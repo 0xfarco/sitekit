@@ -1,0 +1,693 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiteKit</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #111;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+}
+
+.editor {
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
+}
+
+h1, h2, h3 { font-weight: normal; }
+
+.editor-title {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 19px;
+  line-height: 1.7;
+}
+
+.panel {
+  border: 1px solid #333;
+  background: #181818;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin: 12px 0 5px;
+  color: #aaa;
+}
+
+input, textarea, select, button {
+  display: block;
+  width: 100%;
+  background: #111;
+  color: white;
+  border: 1px solid #333;
+  padding: 11px;
+  font: 15px 'Share Tech Mono', monospace;
+  border-radius: 0;
+}
+
+textarea {
+  min-height: 75px;
+  resize: vertical;
+}
+
+button {
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+button:hover, select:hover {
+  border-color: #ff6600;
+  color: #ff6600;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.preview-heading {
+  color: #ff6600;
+  margin-bottom: 12px;
+}
+
+iframe {
+  width: 100%;
+  height: 650px;
+  border: 1px solid #333;
+  background: #111;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px;
+}
+
+
+
+.content-section {
+  border: 1px solid #333;
+  padding: 15px;
+  margin: 15px 0;
+  background: #181818;
+}
+
+.content-section h3 {
+  color: #ff6600;
+}
+
+.content-section .table-help {
+  display: block;
+  color: #999;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.content-section .remove-section {
+  color: #ff6600;
+  border-color: #663300;
+}
+
+.content-section .remove-section:hover {
+  background: #ff6600;
+  color: #111;
+}
+
+
+@media(max-width: 750px) {
+  .editor-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<div class="editor">
+
+  <h2 class="editor-title">SITEKIT : TEMPLATE GENERATOR</h2>
+  <p>Generate pages using the original website's design system.</p>
+
+  <div class="editor-grid">
+
+    <section class="panel">
+      <h3>01 / PAGE TYPE</h3>
+
+      <label>Choose template</label>
+      <select id="type">
+        <option value="landing">Landing Page</option>
+        <option value="usr">usr — About</option>
+        <option value="opt">opt — Projects</option>
+        <option value="bin">bin — System</option>
+        <option value="var">var — Contact</option>
+        <option value="custom">Generic Sub-page</option>
+      </select>
+
+      <label>Page identifier</label>
+      <input id="identifier" value="home">
+
+      <label>Main heading</label>
+      <input id="heading" value="name">
+
+      <label>Page description</label>
+      <textarea id="description">Write your page introduction here.</textarea>
+
+      <h3>02 / CONTENT</h3>
+
+      <label>Section heading</label>
+      <input id="section" value="About">
+
+      <label>Section content</label>
+      <textarea id="content">Add your content here.</textarea>
+
+      <label>Navigation / links</label>
+      <input id="links" value="link1,link2,link3,link4">
+
+      <label>Additional content</label>
+      <textarea id="extra" placeholder="Optional additional paragraphs..."></textarea>
+
+      <h3>Additional Sections</h3>
+
+      <div id="sections"></div>
+
+      <button type="button" onclick="addSection()">
+        + Add New Section
+      </button>
+
+      <h3>03 / STYLE</h3>
+
+      <label>Background</label>
+      <input id="background" type="color" value="#111111">
+
+      <label>Text</label>
+      <input id="foreground" type="color" value="#ffffff">
+
+      <label>Hover color</label>
+      <input id="hover" type="color" value="#ff6600">
+
+      <div class="actions">
+        <button onclick="render()">Update preview</button>
+        <button onclick="download()">Export HTML</button>
+      </div>
+
+      <button onclick="resetPage()">Reset template</button>
+    </section>
+
+    <section>
+      <div class="preview-heading">04 / LIVE PREVIEW</div>
+      <iframe id="preview" title="Generated page preview"></iframe>
+      <p>Preview uses the original 0xfarco design system.</p>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const defaults = {
+  landing: {
+    identifier: 'home',
+    heading: 'name',
+    description: '',
+    section: '',
+    content: ''
+  },
+  usr: {
+    identifier: 'usr',
+    heading: 'usr',
+    description: 'Write your biography here.',
+    section: '',
+    content: ''
+  },
+  opt: {
+    identifier: 'opt',
+    heading: 'opt',
+    description: '',
+    section: 'Achievements',
+    content: 'Add your achievements here.'
+  },
+  bin: {
+    identifier: 'bin',
+    heading: 'bin',
+    description: '',
+    section: 'System',
+    content: 'Operating System: Linux'
+  },
+  var: {
+    identifier: 'var',
+    heading: 'var',
+    description: '',
+    section: 'Contact',
+    content: 'Add your contact information.'
+  },
+  custom: {
+    identifier: 'page',
+    heading: 'page',
+    description: 'Write your introduction here.',
+    section: 'Section One',
+    content: 'Write your content here.'
+  }
+};
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;',
+    '"':'&quot;', "'":'&#39;'
+  })[c]);
+}
+
+function setDefaults() {
+  const d = defaults[$('type').value];
+  Object.keys(d).forEach(k => $(k).value = d[k]);
+  render();
+}
+
+function resetPage() {
+  setDefaults();
+}
+
+$('type').addEventListener('change', setDefaults);
+
+
+let sectionCount = 0;
+
+function addSection(title = '', type = 'text', value = '') {
+  const id = sectionCount++;
+
+  const container = document.createElement('div');
+  container.className = 'content-section';
+  container.id = 'section-' + id;
+
+  container.style.cssText =
+    'border:1px solid #333;padding:15px;margin:15px 0;background:#181818';
+
+  container.innerHTML = `
+    <h3 class="section-number">Section ${id + 1}</h3>
+
+    <label>Section heading</label>
+    <input class="section-title" value="${escapeHTML(title)}"
+      placeholder="Enter section heading">
+
+    <label>Content type</label>
+    <select class="section-type">
+      <option value="text" ${type === 'text' ? 'selected' : ''}>Text</option>
+      <option value="table" ${type === 'table' ? 'selected' : ''}>Table</option>
+    </select>
+
+    <label>Content</label>
+    <textarea class="section-value"
+      placeholder="Enter text or table data...">${escapeHTML(value)}</textarea>
+
+    <small class="table-help">
+      For tables: first line = column headings.
+      Separate columns with | and use a new line for each row.
+    </small>
+
+    <button type="button" class="remove-section">
+      Remove Section
+    </button>
+  `;
+
+  $('sections').appendChild(container);
+  updateSectionNumbers();
+
+  container.querySelector('.section-type')
+    .addEventListener('change', render);
+
+  container.querySelector('.section-value')
+    .addEventListener('input', render);
+
+  container.querySelector('.section-title')
+    .addEventListener('input', render);
+
+  container.querySelector('.remove-section')
+    .addEventListener('click', () => {
+      container.remove();
+      updateSectionNumbers();
+      render();
+    });
+
+  render();
+}
+
+function getAdditionalSections() {
+  return [...document.querySelectorAll('.content-section')]
+    .map(section => ({
+      title: section.querySelector('.section-title').value,
+      type: section.querySelector('.section-type').value,
+      value: section.querySelector('.section-value').value
+    }));
+}
+
+function updateSectionNumbers() {
+  document.querySelectorAll('.content-section').forEach((section, index) => {
+    section.querySelector('.section-number').textContent =
+      `Section ${index + 1}`;
+  });
+}
+
+function generateAdditionalSections() {
+  return getAdditionalSections().map(section => {
+    const title = escapeHTML(section.title);
+
+    if (section.type === 'table') {
+      const rows = section.value
+        .split('\n')
+        .filter(row => row.trim())
+        .map(row => row.split('|').map(cell => cell.trim()));
+
+      if (!rows.length) return '';
+
+      const headers = rows[0];
+
+      return `
+        <section>
+          ${title ? `<h2>${title}</h2>` : ''}
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(cell =>
+                  `<th>${escapeHTML(cell)}</th>`
+                ).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.slice(1).map(row => `
+                <tr>
+                  ${row.map(cell =>
+                    `<td>${escapeHTML(cell)}</td>`
+                  ).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </section>
+      `;
+    }
+
+    return `
+      <section>
+        ${title ? `<h2>${title}</h2>` : ''}
+        ${section.value.split('\n\n').map(p =>
+          `<p>${escapeHTML(p).replace(/\n/g, '<br>')}</p>`
+        ).join('')}
+      </section>
+    `;
+  }).join('\n');
+}
+
+function generatePage() {
+  const type = $('type').value;
+  const id = escapeHTML($('identifier').value);
+  const heading = escapeHTML($('heading').value);
+  const description = escapeHTML($('description').value);
+  const section = escapeHTML($('section').value);
+  const content = escapeHTML($('content').value);
+  const extra = escapeHTML($('extra').value);
+  const links = $('links').value.split(',')
+    .map(x => x.trim()).filter(Boolean);
+
+  const bg = $('background').value;
+  const fg = $('foreground').value;
+  const hover = $('hover').value;
+
+  const nav = `
+    <div class="home-links">
+      ${['usr','opt','bin','var'].map((x,i) =>
+        `<a href="${x}.html">${x}</a>${i<3?'<span class="separator">|</span>':''}`
+      ).join('')}
+    </div>`;
+
+  let body = '';
+
+  if(type === 'landing') {
+    body = `
+      <div class="home">
+        <h1>${heading}</h1>
+        ${nav}
+      </div>`;
+  }
+
+  else if(type === 'usr') {
+    body = `
+      <div class="usr">
+        <h1>${heading}</h1>
+        ${description.split('\n\n').map(p=>`<p>${p}</p>`).join('')}
+        ${extra ? `<p>${extra}</p>` : ''}
+        <div class="back-link"><a href="index.html">← home</a></div>
+      </div>`;
+  }
+
+  else if(type === 'opt') {
+    body = `
+      <div class="opt">
+        <h1>${heading}</h1>
+        <h2>${section}</h2>
+        <ul>
+          ${content.split('\n').filter(Boolean)
+            .map(x=>`<li>${x}</li>`).join('')}
+        </ul>
+        <h2>Projects</h2>
+        <table>
+          <tr><th>Project Name</th><th>Description</th></tr>
+          <tr><td>Project One</td><td>Project description</td></tr>
+          <tr><td>Project Two</td><td>Project description</td></tr>
+        </table>
+        ${extra ? `<h2>Misc</h2><p>${extra}</p>` : ''}
+        <div class="back-link"><a href="index.html">← home</a></div>
+      </div>`;
+  }
+
+  else if(type === 'bin') {
+    body = `
+      <div class="bin">
+        <h1>${heading}</h1>
+        ${[
+          section || 'System',
+          'Window Management',
+          'Utilities',
+          'Planning & Information',
+          'Production'
+        ].map((s,i)=>`
+          <h2>${escapeHTML(s)}</h2>
+          <table>
+            ${content.split('\n').filter(Boolean)
+              .map((line,j)=>{
+                const parts = line.split(':');
+                return `<tr><td>${escapeHTML(parts[0])}</td>
+                <td>${escapeHTML(parts.slice(1).join(':') || 'Value')}</td></tr>`;
+              }).join('') || '<tr><td>Item</td><td>Value</td></tr>'}
+          </table>
+        `).join('')}
+        <div class="back-link"><a href="index.html">← home</a></div>
+      </div>`;
+  }
+
+  else if(type === 'var') {
+    body = `
+      <div class="var">
+        <h1>${heading}</h1>
+        <div class="var-links">
+          ${links.map(x=>`
+            <div class="link-box">
+              <a href="#">${escapeHTML(x)}</a>
+            </div>
+          `).join('')}
+        </div>
+        <div class="back-link"><a href="index.html">← home</a></div>
+      </div>`;
+  }
+
+  else {
+    body = `
+      <div class="${id}">
+        <h1>${heading}</h1>
+        ${description ? `<p>${description}</p>` : ''}
+        <h2>${section}</h2>
+        ${content.split('\n\n').map(p=>`<p>${p}</p>`).join('')}
+        ${extra ? `<p>${extra}</p>` : ''}
+        <div class="back-link"><a href="index.html">← home</a></div>
+      </div>`;
+  }
+
+  const additionalSections = generateAdditionalSections();
+
+  if (body.includes('<div class="back-link">')) {
+    body = body.replace(
+      '<div class="back-link">',
+      additionalSections + '<div class="back-link">'
+    );
+  } else {
+    body += additionalSections;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0xfarco - ${heading}</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  color: ${fg};
+  background-color: ${bg};
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.home h1, .usr h1, .opt h1, .bin h1, .var h1 {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 40px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.opt h2, .bin h2 {
+  font-size: 28px;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+.home-links {
+  font-size: 24px;
+  margin: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.home-links a {
+  text-decoration: none;
+  margin: 10px;
+  color: inherit;
+  font-size: 1.5rem;
+}
+
+.home-links a:hover { color: ${hover}; }
+
+.separator {
+  margin: 10px;
+  letter-spacing: -2px;
+  vertical-align: middle;
+}
+
+p { max-width: 800px; line-height: 1.6; }
+
+a {
+  color: ${fg};
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:hover { color: ${hover}; }
+
+.back-link { margin-top: 30px; font-size: 20px; }
+
+table {
+  width: 100%;
+  max-width: 900px;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+table, th, td { border: 1px solid #333; }
+th, td { padding: 8px; text-align: left; }
+th { background-color: #222; }
+
+.var-links {
+  font-size: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.link-box {
+  background-color: #222;
+  border: 1px solid #333;
+  padding: 15px;
+  margin: 10px;
+  width: calc(45% - 20px);
+  text-align: center;
+  font-size: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.var-links a {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+}
+
+@media screen and (min-width:768px) {
+  .home h1 { font-size: 60px; }
+  .home-links a { font-size: 1.8rem; }
+}
+
+@media screen and (max-width:480px) {
+  body { padding: 20px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 24px; }
+  .home-links a { font-size: 18px; }
+  p { font-size: 16px; }
+  td { font-size: 16px; }
+  .var-links a { font-size: 16px; }
+  .link-box { width: 100%; }
+}
+</style>
+</head>
+<body>${body}</body>
+</html>`;
+}
+
+function render() {
+  const html = generatePage();
+  $('preview').srcdoc = html;
+}
+
+function download() {
+  const html = generatePage();
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const type = $('type').value;
+  a.href = url;
+  a.download = (type === 'landing' ? 'index' : $('identifier').value) + '.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.querySelectorAll('input, textarea, select').forEach(el => {
+  el.addEventListener('input', render);
+});
+
+render();
+</script>
+</body>
+</html>
+
